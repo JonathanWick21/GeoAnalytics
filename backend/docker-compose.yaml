@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:15
+    container_name: geoanalytics-db
+    environment:
+      POSTGRES_USER: geo
+      POSTGRES_PASSWORD: geo
+      POSTGRES_DB: geoanalytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - geoanalytics_pgdata:/var/lib/postgresql/data
+
+volumes:
+  geoanalytics_pgdata:
