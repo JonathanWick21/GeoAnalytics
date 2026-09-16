@@ -1,10 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from database import engine
+from contextlib import asynccontextmanager
+from database import Base, engine
 
+import models
 
-app = FastAPI(title="GeoAnalytics", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    yield
+
+app = FastAPI(title="GeoAnalytics", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -20,7 +27,7 @@ app.add_middleware(
 def health():
     return {"status": "ok"}
 
-@app.get(("/health/db"))
+@app.get("/health/db")
 def health_db():
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
