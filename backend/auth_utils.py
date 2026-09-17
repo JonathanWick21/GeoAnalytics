@@ -1,10 +1,15 @@
 import os
-form datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import jwt
-from pwdlib import password_hash
+from pwdlib import PasswordHash
+
+from dotenv import load_dotenv
+load_dotenv()
+
 
 password_hash = PasswordHash.recommended()
+
 
 JWT_SECRET = os.getenv("AUTH_JWT_SECRET", "dev_only_change_me")
 JWT_ALG = "HS256"
