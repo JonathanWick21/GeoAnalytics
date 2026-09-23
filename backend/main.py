@@ -5,9 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from psycopg.types import none
 from sqlalchemy import text
 from contextlib import asynccontextmanager
-from database import Base, engine
 
-import models
+from deps import get_current_user
+from schemas import WorkspaceOut, WorkspaceCreate
+from database import Base, engine
+from models import Workspace, User
+
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -109,3 +113,30 @@ def me(
 def logout(response: Response):
     response.delete_cookie(COOKIE_NAME, path="/")
     return {"ok": True}
+
+
+#### Workspaces
+
+@app.get("/workspaces", response_model=list[WorkspaceOut])
+def list_workspaces(
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)
+):
+    return (
+        db.query(Workspace)
+        .filter(Workspace.owner_id == user.id)
+        .order_by(Workspace.owner_id.desc()).all()
+    )
+
+@app.post("/workspaces", response_model=WorkspaceOut, status_code=201)
+def create_workspace(
+        body: WorkspaceCreate,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)
+):
+    ws = Workspace(name=body.name.strip(), owner_id=user.id)
+    db.add(ws)
+    db.commit()
+    db.refresh(ws)
+    return ws
+
