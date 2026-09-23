@@ -1,29 +1,41 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
+import Link from "next/link";
+import { me, logout, User } from "@/lib/api";
 
 export default function Home() {
-  const [ status, setStatus ] = useState<string>("cargando...")
-  const [ error, setError ] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/health`, {credentials: "include"})
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => setStatus(JSON.stringify(data)))
+    me()
+      .then(setUser)
       .catch((err) => setError(String(err)));
   }, []);
 
+  async function onLogout() {
+    await logout();
+    setUser(null);
+    setError("Not authenticated");
+  }
+
   return (
-    <main>
+    <main style={{ padding: 32, fontFamily: "system-ui" }}>
       <h1>GeoAnalytics</h1>
-      <p>Comprobación de la API:</p>
-      {error ? <pre>Error: {error}</pre> : <pre>{status}</pre>}
+      {user ? (
+        <>
+          <p>Sesión: {user.email} (id {user.id})</p>
+          <button type="button" onClick={onLogout}>
+            Logout
+          </button>
+        </>
+      ) : (
+        <>
+          <p>{error ?? "cargando..."}</p>
+          <Link href="/login">Ir a login</Link>
+        </>
+      )}
     </main>
   );
 }
-
