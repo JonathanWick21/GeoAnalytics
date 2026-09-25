@@ -2,14 +2,12 @@ from sys import path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from psycopg.types import none
 from sqlalchemy import text
 from contextlib import asynccontextmanager
 
-from deps import get_current_user
+from deps import get_current_user, get_owned_workspace
 from schemas import WorkspaceOut, WorkspaceCreate
 from database import Base, engine
-from models import Workspace, User
 
 
 
@@ -49,8 +47,8 @@ from fastapi import Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import User
-from schemas import RegisterIn, LoginIn, UserOut
+from models import User, Workspace, Project
+from schemas import RegisterIn, LoginIn, UserOut, ProjectCreate, ProjectOut
 from auth_utils import (
     hash_password,
     verify_password,
@@ -140,3 +138,36 @@ def create_workspace(
     db.refresh(ws)
     return ws
 
+#### Projects
+
+@app.get("/workspaces/{workspace_id}/projects", response_model=list[ProjectOut])
+def list_projects(
+        workspace: Workspace = Depends(get_owned_workspace),
+        db: Session = Depends(get_db)
+):
+    return (
+        db.query(Project)
+        .filter(Project.workspace_id == workspace.id)
+        .order_by(Project.id.desc())
+        .all()
+    )
+
+@app.post(
+    "/workspaces/{workspace_id}/projects",
+    response_model=ProjectOut,
+    status_code=201
+)
+def create_project(
+        body: ProjectCreate,
+        workspace: Workspace = Depends(get_owned_workspace),
+        db: Session = Depends(get_db)
+):
+    project = Project(
+        workspace_id=workspace.id,
+        name=body.name.strip(),
+        url=body.url.strip()
+    )
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    return project
