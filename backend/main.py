@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from contextlib import asynccontextmanager
 
-from deps import get_current_user, get_owned_workspace
+from schemas import AuditOut
+from deps import get_current_user, get_owned_workspace, get_owned_project
 from schemas import WorkspaceOut, WorkspaceCreate
 from database import Base, engine
 
@@ -47,7 +48,7 @@ from fastapi import Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import User, Workspace, Project
+from models import User, Workspace, Project, Audit
 from schemas import RegisterIn, LoginIn, UserOut, ProjectCreate, ProjectOut
 from auth_utils import (
     hash_password,
@@ -171,3 +172,59 @@ def create_project(
     db.commit()
     db.refresh(project)
     return project
+
+@app.post("/projects/{project_id}/audits", response_model=AuditOut, status_code=201)
+def start_audit(
+        project_id: int,
+        project: Project = Depends(get_owned_project),
+        db: Session = Depends(get_db)
+):
+    audit = Audit(project_id = project.id, status="running")
+    db.add(audit)
+    db.commit()
+    db.refresh(audit)
+
+    #Resultado hardcodeado para probar, luego será real
+    audit.status = "completed"
+    audit.result = {
+        "brand": project.name,
+        "url": project.url,
+        "share of voice": 0.4,
+        "mentions": 3,
+        "summary": "Resultado de ejemplo.",
+        "engines": [
+            {"name": "chatgtp", "mentioned": True, "score": 0.5},
+            {"name": "gemini", "mentioned": False, "score": 0.5}
+        ]
+    }
+    db.commit()
+    db.refresh(audit)
+    return audit
+
+@app.get("/projects/{project_id}/audits", response_model=list[AuditOut])
+def list_audits(
+        project_id: int,
+        project: Project = Depends(get_owned_project),
+        db: Session = Depends(get_db)
+):
+    return (
+        db.query(Audit)
+        .filter(Audit.project_id == project_id)
+        .order_by(Audit.id.desc())
+        .all()
+    )
+
+@app.get("/audits/{audit_id}", response_model=AuditOut)
+def get_audit(
+        audit_id: int,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)
+):
+    audit = db.get(Audit, audit_id)
+    if not audit:
+        raise HTTPException(status_code=404, detail="Audit not found")
+    project = db.get(Project, audit.project_id)
+    ws = db.get(Workspace, project.workspace_id) if project else None
+    if not project or not ws or ws.owner_id != user.id:
+        raise HTTPException(status_code=404, detail="Audit not found")
+    return audit

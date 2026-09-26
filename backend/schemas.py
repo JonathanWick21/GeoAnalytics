@@ -36,3 +36,13 @@ class ProjectOut(BaseModel):
     url: str
 
     model_config = {"from_attributes": True}
+
+
+class AuditOut(BaseModel):
+    id: int
+    project_id: int
+    status: str
+    result: dict | None
+    error: str | None
+
+    model_config = {"from_attributes": True}

@@ -2,7 +2,7 @@ from fastapi import Cookie, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import User, Workspace
+from models import User, Workspace, Project
 from auth_utils import COOKIE_NAME, decode_access_token
 
 
@@ -29,3 +29,16 @@ def get_owned_workspace(
     if not ws or ws.owner_id != user.id:
         raise HTTPException(status_code=404, detail="Workspace not found")
     return ws
+
+def get_owned_project(
+        project_id: int,
+        db: Session = Depends(get_db),
+        user: User = Depends(get_current_user)
+) -> Project:
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    ws = db.get(Workspace, project.workspace_id)
+    if not ws or ws.owner_id != user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
