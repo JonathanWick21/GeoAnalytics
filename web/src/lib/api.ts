@@ -3,6 +3,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 export type User = { id: number, email: string };
 export type Workspace = { id: number, name: string, owner_id: number };
 export type Project = { id: number, name: string, url: string, workspace_id: number };
+export type Audit = { id: number, project_id: number, status: string, result: Record<string, unknown>, error: string | null }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API_URL}${path}`, {
@@ -56,4 +57,15 @@ export function createProject(name: string, url: string, workspaceId: number) {
         method: "POST",
         body: JSON.stringify({ name, url })
     })
+}
+
+export function listAudits(project_id: number) {
+    return request<Audit[]>(`/projects/${project_id}/audits`);
+}
+
+export function startAudit(project_id: number) {
+    return request<Audit>(`/projects/${project_id}/audits`, {
+        method: 'POST'
+    });
+
 }
