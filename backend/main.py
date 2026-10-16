@@ -173,30 +173,28 @@ def create_project(
     db.refresh(project)
     return project
 
+from gemini_client import run_geo_audit
+
 @app.post("/projects/{project_id}/audits", response_model=AuditOut, status_code=201)
 def start_audit(
-        project_id: int,
-        project: Project = Depends(get_owned_project),
-        db: Session = Depends(get_db)
+    project_id: int,
+    project: Project = Depends(get_owned_project),
+    db: Session = Depends(get_db),
 ):
-    audit = Audit(project_id = project.id, status="running")
+    audit = Audit(project_id=project.id, status="running")
     db.add(audit)
     db.commit()
     db.refresh(audit)
 
-    #Resultado hardcodeado para probar, luego será real
-    audit.status = "completed"
-    audit.result = {
-        "brand": project.name,
-        "url": project.url,
-        "share of voice": 0.4,
-        "mentions": 3,
-        "summary": "Resultado de ejemplo.",
-        "engines": [
-            {"name": "chatgtp", "mentioned": True, "score": 0.5},
-            {"name": "gemini", "mentioned": False, "score": 0.5}
-        ]
-    }
+    try:
+        audit.result = run_geo_audit(project.name, project.url)
+        audit.status = "completed"
+        audit.error = None
+    except Exception as exc:
+        audit.status = "failed"
+        audit.result = None
+        audit.error = str(exc)
+
     db.commit()
     db.refresh(audit)
     return audit
