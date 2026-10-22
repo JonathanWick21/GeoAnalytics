@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { me, listProjects, createProject, Project, startAudit, listAudits, Audit } from "@/lib/api";
+import { AuditResultCard } from "@/components/AuditResultCard";
 
 export default function WorkspaceDetailPage() {
   const params = useParams();
@@ -103,16 +104,14 @@ export default function WorkspaceDetailPage() {
                   <li>Sin auditorías aún.</li>
                 ) : (
                   (auditsByProjects[p.id] ?? []).map((a) => (
-                    <li key={a.id}>
-                      Audit #{a.id}: <strong>{a.status}</strong>
-                      {a.result && (
-                        <pre style={{ fontSize: 12, background: "#f4f4f4", padding: 8 }}>
-                          {JSON.stringify(a.result, null, 2)}
-                        </pre>
+                    <li key={a.id} style={{ marginBottom: 16, listStyle: "none" }}>
+                      <div>
+                        Audit #{a.id}: <strong>{a.status}</strong>
+                      </div>
+                      {a.status === "failed" && a.error && (
+                        <p style={{ color: "crimson" }}>{a.error}</p>
                       )}
-                      {a.error && (
-                        <span style={{ color: "crimson" }}> — {a.error}</span>
-                      )}
+                      {a.result && <AuditResultCard result={a.result} />}
                     </li>
                   ))
                 )}

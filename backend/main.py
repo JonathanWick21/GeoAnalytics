@@ -193,7 +193,7 @@ def start_audit(
     except Exception as exc:
         audit.status = "failed"
         audit.result = None
-        audit.error = str(exc)
+        audit.error = str(exc).split("?key=")[0]
 
     db.commit()
     db.refresh(audit)
