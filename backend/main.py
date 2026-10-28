@@ -1,5 +1,3 @@
-from sys import path
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -9,6 +7,8 @@ from schemas import AuditOut
 from deps import get_current_user, get_owned_workspace, get_owned_project
 from schemas import WorkspaceOut, WorkspaceCreate
 from database import Base, engine
+from crawler import fetch_page_text
+from gemini_client import run_geo_audit
 
 
 
@@ -173,7 +173,7 @@ def create_project(
     db.refresh(project)
     return project
 
-from gemini_client import run_geo_audit
+
 
 @app.post("/projects/{project_id}/audits", response_model=AuditOut, status_code=201)
 def start_audit(
@@ -187,13 +187,23 @@ def start_audit(
     db.refresh(audit)
 
     try:
-        audit.result = run_geo_audit(project.name, project.url)
+        crawl_warning = None
+        try:
+            page_text = fetch_page_text(project.url)
+        except Exception as crawl_exc:
+            page_text = ""
+            crawl_warning = f"crawl: {crawl_exc}"
+        audit.result = run_geo_audit(project.name, project.url, page_text)
+        audit.result["source_chars"] = len(page_text)
+        if crawl_warning:
+            audit.result["crawl_warning"] = crawl_warning
+            audit.result["grounded"] = False
         audit.status = "completed"
         audit.error = None
     except Exception as exc:
         audit.status = "failed"
         audit.result = None
-        audit.error = str(exc).split("?key=")[0]
+        audit.error = f"gemini: {str(exc).split('?key=')[0]}"
 
     db.commit()
     db.refresh(audit)

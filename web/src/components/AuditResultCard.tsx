@@ -19,6 +19,16 @@ export function AuditResultCard({ result }: { result: AuditResult }) {
                 color: "#111827"
             }}
         >
+            {result.crawl_warning && (
+                <p style={{ color: "#b45309", marginBottom: 12 }}>
+                    Crawl: {result.crawl_warning}
+                </p>
+            )}
+            {typeof result.source_chars === "number" && (
+                <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
+                    Caracteres extraídos: {result.source_chars}
+                </p>
+            )}
             {result.summary && (
                 <p style={{ margin: "0 0 16px", lineHeight: 1.5, color: "#111827" }}>{result.summary}</p>
             )}

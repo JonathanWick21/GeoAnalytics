@@ -12,7 +12,10 @@ export type AuditResult = {
     mentions?: number,
     share_of_voice: number,
     engines?: AuditEngine[],
-    recommendations?: string[]
+    recommendations?: string[],
+    source_chars?: number,
+    crawl_warning?: string,
+    grounded?: boolean,
 };
 export type Audit = {
     id: number,
@@ -40,7 +43,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         text = text.replace(/AIza[0-9A-Za-z_-]+/g, "***");
         text = text.replace(/AQ\.[0-9A-Za-z_-]+/g, "***");
         throw new Error(text || `HTTP ${res.status}`);
-      }
+    }
     return res.json() as Promise<T>;
 }
 
