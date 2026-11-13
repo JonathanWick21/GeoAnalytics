@@ -1,7 +1,11 @@
+import os
+from itertools import count
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone, timedelta
 
 from schemas import AuditOut
 from deps import get_current_user, get_owned_workspace, get_owned_project
@@ -17,13 +21,23 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     yield
 
-app = FastAPI(title="GeoAnalytics", version="0.1.0", lifespan=lifespan)
+
+_is_prod = os.getenv("ENV", "development") == "production"
+app = FastAPI(title="GeoAnalytics",
+              version="0.1.0",
+              lifespan=lifespan,
+              docs_url=None if _is_prod else "/docs",
+              redoc_url=None if _is_prod else "/redoc",
+              openapi_url=None if _is_prod else "/openapi.json"
+              )
+_origins = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000"
+)
+allow_origins = [o.strip() for o in _origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -80,14 +94,16 @@ def login(body: LoginIn, response: Response, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = create_access_token(user.id)
+    cookie_secure = os.getenv("COOKIE_SECURE", "0") == "1"
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,
-        httponly=True, #Con esto JS no puede leerla
-        samesite="lax", #Mitiga CSRF básico en navegación
-        secure=False, #True en producción con HTTPS
-        max_age= 30 * 24 * 3600,
-        path="/"
+        httponly=True,  # JS no puede leerla
+        # Cross-domain (Vercel → Railway) necesita SameSite=None + Secure
+        samesite="none" if cookie_secure else "lax",
+        secure=cookie_secure,
+        max_age=30 * 24 * 3600,
+        path="/",
     )
     return user
 
@@ -110,7 +126,13 @@ def me(
 
 @app.post("/auth/logout")
 def logout(response: Response):
-    response.delete_cookie(COOKIE_NAME, path="/")
+    cookie_secure = os.getenv("COOKIE_SECURE", "0") == "1"
+    response.delete_cookie(
+        COOKIE_NAME,
+        path="/",
+        samesite="none" if cookie_secure else "lax",
+        secure=cookie_secure,
+    )
     return {"ok": True}
 
 
@@ -174,13 +196,30 @@ def create_project(
     return project
 
 
+MAX_AUDITS_PER_DAY = int(os.getenv("MAX_AUDITS_PER_DAY", "4"))
 
 @app.post("/projects/{project_id}/audits", response_model=AuditOut, status_code=201)
 def start_audit(
     project_id: int,
     project: Project = Depends(get_owned_project),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
+    since = datetime.now(timezone.utc) - timedelta(days=1)
+    used = (
+        db.query(Audit)
+        .join(Project, Audit.project_id == Project.id)
+        .join(Workspace, Project.workspace_id == Workspace.id)
+        .filter(
+            Workspace.owner_id == user.id, Audit.created_at >= since
+        ).count()
+    )
+    if used >= MAX_AUDITS_PER_DAY:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Límite diario de auditorías ({MAX_AUDITS_PER_DAY}). Intenta mañana."
+        )
+
     audit = Audit(project_id=project.id, status="running")
     db.add(audit)
     db.commit()

@@ -1,63 +1,53 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f3f4f6;
-  --foreground: #111827;
-  --card: #ffffff;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --accent: #0f766e;
+/* Paleta de marca (teal) + colores reservados para datos y estados */
+@theme {
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-300: #5eead4;
+  --color-brand-400: #2dd4bf;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+  --color-brand-900: #134e4a;
+  --color-brand-950: #042f2e;
+
+  /* Serie de datos (share of voice, scores) */
+  --color-data: #2a78d6;
+
+  /* Estados: siempre acompañados de icono + texto */
+  --color-good: #0ca30c;
+  --color-warning: #fab219;
+  --color-critical: #d03b3b;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 /* Sin prefers-color-scheme: forzamos claro para el MVP */
+:root {
+  color-scheme: light;
+}
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  background: var(--color-zinc-50);
+  color: var(--color-zinc-900);
   margin: 0;
 }
 
-a {
-  color: var(--accent);
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
 }
 
-input,
-button {
-  font: inherit;
-  color: var(--foreground);
-}
-
-input {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-}
-
-button {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 14px;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-main {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 32px 20px;
+.animate-progress {
+  animation: progress-indeterminate 1.4s ease-in-out infinite;
 }

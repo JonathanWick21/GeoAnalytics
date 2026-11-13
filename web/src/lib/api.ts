@@ -16,6 +16,9 @@ export type AuditResult = {
     source_chars?: number,
     crawl_warning?: string,
     grounded?: boolean,
+    prompt_results?: { prompt: string; mentioned: boolean; answer_excerpt?: string }[],
+    method?: string;
+    demo?: boolean;
 };
 export type Audit = {
     id: number,
@@ -45,6 +48,39 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         throw new Error(text || `HTTP ${res.status}`);
     }
     return res.json() as Promise<T>;
+}
+
+const ERROR_TRANSLATIONS: Record<string, string> = {
+    "Invalid email or password": "Email o contraseña incorrectos.",
+    "Email already registered": "Ya existe una cuenta con ese email.",
+    "Not authenticated": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
+    "Invalid session": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
+    "Audit not found": "Auditoría no encontrada.",
+    "Failed to fetch": "No se pudo conectar con el servidor. ¿Está el backend en marcha?",
+};
+
+/** Convierte un error de `request` (texto o JSON de FastAPI) en un mensaje legible. */
+export function errorMessage(err: unknown): string {
+    const raw = err instanceof Error ? err.message : String(err);
+    let message = raw;
+    try {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.detail === "string") {
+            message = parsed.detail;
+        } else if (Array.isArray(parsed?.detail)) {
+            message = parsed.detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(". ");
+        }
+    } catch {
+        // no es JSON: usamos el texto tal cual
+    }
+    return ERROR_TRANSLATIONS[message] ?? message;
+}
+
+export function register(email: string, password: string) {
+    return request<User>("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ email, password })
+    });
 }
 
 export function login(email: string, password: string) {
@@ -93,4 +129,8 @@ export function startAudit(project_id: number) {
         method: 'POST'
     });
 
+}
+
+export function getAudit(audit_id: number) {
+    return request<Audit>(`/audits/${audit_id}`);
 }

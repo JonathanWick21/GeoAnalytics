@@ -1,71 +1,66 @@
 # GeoAnalytics
 
-Personal GEO (Generative Engine Optimization) MVP rebuilt from scratch for learning and portfolio.
+MVP de **GEO** (Generative Engine Optimization): mide si una marca aparece en respuestas de un LLM ante preguntas reales del sector.
 
-Audits how visible a brand might be inside generative AI answers (starting with **Google Gemini**), with auth, workspaces, projects and persisted audit results.
+Auth con cookie, workspaces, projects y auditorías persistidas. Empezamos con **Google Gemini**.
 
-> Rebuilt step by step while studying concepts from a prior internship GEO platform — this repo is an independent implementation, not a company fork.
+> Reconstruido desde cero para aprender / portfolio. No es un fork de ninguna plataforma de empresa.
 
 ## Stack
 
-| Layer | Tech |
-|-------|------|
-| API | Python, FastAPI, Uvicorn |
+| Capa | Tech |
+|------|------|
+| API | FastAPI + Uvicorn |
 | DB | PostgreSQL 15 + SQLAlchemy 2 + Docker |
-| Auth | httpOnly cookie JWT (`geo_session`), argon2 passwords (`pwdlib`) |
-| AI | Gemini (`httpx` → Generative Language API) |
-| Web | Next.js (App Router), TypeScript |
+| Auth | Cookie httpOnly JWT (`geo_session`) + argon2 (`pwdlib`) |
+| Crawl | httpx (+ Playwright si hace falta) |
+| AI | Gemini (REST via `httpx`) |
+| Front | Next.js (App Router) + TypeScript |
 
-## Architecture
+## Flujo
 
 ```text
 Browser (Next.js :3000)
-    │  cookie geo_session + credentials: include
-    ▼
+   │  cookie geo_session + credentials: "include"
+   ▼
 FastAPI (:8080)
-    ├── Auth / workspaces / projects / audits
-    ├── PostgreSQL
-    └── Gemini (on POST /projects/{id}/audits)
+   ├── auth / workspaces / projects / audits
+   ├── PostgreSQL
+   ├── crawl de la URL del project
+   └── Gemini → prompts del sector → tasa de mención
 ```
 
-## Features (current MVP)
+## Qué hace hoy
 
-- Register / login / logout / session (`/auth/*`)
-- Workspaces CRUD (owned by user)
-- Projects per workspace (name + URL)
-- Start audit → Gemini returns structured JSON (SoV estimate, summary, recommendations)
-- Dashboard lists workspaces → projects → audits
+- Register / login / logout / sesión
+- Workspaces y projects (marca + URL)
+- Auditoría: crawl → genera preguntas del sector → pregunta a Gemini → detecta si menciona la marca
+- Límite diario de auditorías por usuario (`MAX_AUDITS_PER_DAY`)
+- Front: listado + detalle de auditoría
 
-## What this is not (yet)
+## Qué no es (aún)
 
-- Not a multi-engine live query (ChatGPT/Claude scores are **model estimates** in one Gemini prompt)
-- No Celery/background workers (audit runs in the request)
-- No Stripe / landing / plan quotas
-- No site crawler grounding (brand context is name + URL + model knowledge)
+- Multi-motor real (ChatGPT / Claude en vivo)
+- Cola en background (Celery): la auditoría corre en el request
+- Billing / planes
 
-## Project layout
+## Layout
 
 ```text
 GeoAnalytics/
-├── backend/          # FastAPI
-│   ├── main.py
-│   ├── models.py
-│   ├── gemini_client.py
-│   ├── docker-compose.yaml
-│   └── .env.example
-└── web/              # Next.js dashboard
-    └── src/app/
+├── backend/     # FastAPI
+└── web/         # Next.js
 ```
 
-## Setup
+## Setup local
 
-### Prerequisites
+### Requisitos
 
-- Python 3.12+ (developed on 3.14)
+- Python 3.12+
 - Node.js 20+
-- Docker Desktop (PostgreSQL)
+- Docker Desktop
 
-### 1. Database
+### 1. Postgres
 
 ```bash
 cd backend
@@ -74,30 +69,37 @@ docker compose up -d
 
 ### 2. Backend
 
-```bash
-cd backend
-python -m venv ../.venv
-```
-
-Windows (desde `backend/`, con el venv en `GeoAnalytics/.venv`):
-
 ```powershell
+cd backend
+python -m venv ..\.venv
 ..\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env
 uvicorn main:app --reload --port 8080
 ```
 
-Required `.env` keys (see `.env.example`):
+Rellena `.env` (nunca lo subas al repo). Mínimo:
 
-- `DATABASE_URL`
-- `AUTH_JWT_SECRET`
-- `GEMINI_API_KEY`
-- `GEMINI_MODEL` (e.g. `gemini-3.8-flash` or `gemini-flash-latest` — some older model ids return 404 for new API keys)
+```env
+DATABASE_URL=postgresql+psycopg://geo:geo@127.0.0.1:5432/geoanalytics
+AUTH_JWT_SECRET=cambia_esto_por_uno_largo
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-3.5-flash-lite
+```
 
-API docs: http://localhost:8080/docs
+Opcional / producción:
 
-### 3. Frontend
+```env
+ENV=development
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+COOKIE_SECURE=0
+MAX_AUDITS_PER_DAY=4
+```
+
+Health: http://localhost:8080/health  
+Docs (solo si `ENV` ≠ `production`): http://localhost:8080/docs
+
+### 3. Front
 
 ```bash
 cd web
@@ -105,31 +107,36 @@ npm install
 npm run dev
 ```
 
-Create `web/.env.local` if needed:
+`web/.env.local`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
-Open http://localhost:3000 — use **localhost** (not `127.0.0.1`) so the session cookie works with the API.
+Abre http://localhost:3000 — usa **localhost** (no `127.0.0.1`) para que la cookie cuadre con la API.
 
-## Learning notes
+## Demo rápida
 
-Useful lessons from building this:
+1. Regístrate / login  
+2. Crea workspace → project (nombre + URL)  
+3. Lanza auditoría → abre el detalle  
 
-- `create_all` does **not** migrate existing tables → local `DROP TABLE` when models change
-- Cookie auth across ports needs the **same host** (`localhost` vs `127.0.0.1`)
-- FastAPI `Depends(get_db)` must pass the function, not `get_db()`
-- Gemini model ids change; ListModels ≠ generateContent availability
-- Keep secrets in `.env`, never commit them
+## Lecciones útiles
 
-## Possible next steps
+- `create_all` no migra tablas viejas → a veces hace falta `DROP TABLE` en local
+- Cookie entre puertos: mismo host (`localhost` ≠ `127.0.0.1`)
+- `Depends(get_db)` pasa la función, no `get_db()`
+- Los model ids de Gemini cambian; si 404, prueba otro en `GEMINI_MODEL`
+- Secrets solo en `.env` / el panel del host, nunca en el README
 
-- Background audits (Celery + Redis)
-- Crawl the project URL and ground the prompt
-- Richer results UI
-- CSRF for cookie mutations (like production GEO apps)
+## Producción (checklist)
+
+- `ENV=production` (oculta `/docs`)
+- `COOKIE_SECURE=1` (HTTPS)
+- `AUTH_JWT_SECRET` fuerte (obligatorio)
+- `CORS_ORIGINS` = URL real del front
+- `NEXT_PUBLIC_API_URL` = URL real del API
 
 ## License
 
-Private / portfolio use unless stated otherwise.
+Uso privado / portfolio salvo que se indique lo contrario.

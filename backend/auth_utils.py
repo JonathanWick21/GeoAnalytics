@@ -12,6 +12,11 @@ password_hash = PasswordHash.recommended()
 
 
 JWT_SECRET = os.getenv("AUTH_JWT_SECRET", "dev_only_change_me")
+ENV = os.getenv("ENV", "development")
+
+if ENV == "production" and JWT_SECRET in ("", "dev_only_change_me"):
+    raise RuntimeError("En producción debes definir AUTH_JWT_SECRET fuerte en el .env")
+
 JWT_ALG = "HS256"
 JWT_EXPIRE_DAYS = 30
 COOKIE_NAME = "geo_session"

@@ -1,16 +1,28 @@
 # Python
 .venv/
+venv/
 **/__pycache__/
 *.py[cod]
 backend/.env
+.env
+.env.*
+!.env.example
+!**/.env.example
 
 # Node / Next
 web/node_modules/
 web/.next/
+web/out/
 web/.env.local
+web/.env*.local
 
 # IDE / OS
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Deploy / local
+*.log
+.railway/
+.vercel/
