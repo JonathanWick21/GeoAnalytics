@@ -2,7 +2,7 @@
 # https://fly.io/docs/reference/configuration/
 
 app = 'geoanalytics-api'
-primary_region = 'mad'
+primary_region = 'cdg'
 
 [build]
   dockerfile = 'Dockerfile'
