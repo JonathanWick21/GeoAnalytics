@@ -121,21 +121,91 @@ Abre http://localhost:3000 — usa **localhost** (no `127.0.0.1`) para que la co
 2. Crea workspace → project (nombre + URL)  
 3. Lanza auditoría → abre el detalle  
 
+## Deploy (producción)
+
+Demo pública:
+
+| Pieza | Host | URL |
+|-------|------|-----|
+| Front | Vercel | https://geoanalytics-web.vercel.app |
+| API | Fly.io | https://geoanalytics-api.fly.dev |
+| DB | Neon (Postgres) | (solo connection string en secrets) |
+
+Health API: https://geoanalytics-api.fly.dev/health  
+Health DB: https://geoanalytics-api.fly.dev/health/db  
+
+> Railway se descartó (trial caducado). Stack real: **Neon + Fly + Vercel**.
+
+### Arquitectura en prod
+
+```text
+Browser → Vercel (Next.js)
+              │  cookie geo_session (Secure + SameSite=None)
+              ▼
+         Fly.io (FastAPI + Playwright)
+              ├── Neon Postgres
+              └── Gemini API
+```
+
+### Variables en el API (Fly secrets)
+
+```text
+DATABASE_URL          # Neon (postgresql://…; el backend lo normaliza a +psycopg)
+AUTH_JWT_SECRET       # largo, obligatorio con ENV=production
+GEMINI_API_KEY
+GEMINI_MODEL=gemini-3.5-flash-lite
+ENV=production
+COOKIE_SECURE=1       # activa Secure + SameSite=None
+CORS_ORIGINS=https://geoanalytics-web.vercel.app
+MAX_AUDITS_PER_DAY=4
+GEO_DEMO=0
+```
+
+### Variables en el front (Vercel)
+
+```text
+NEXT_PUBLIC_API_URL=https://geoanalytics-api.fly.dev
+```
+
+### Redesplegar
+
+API (desde `backend/`):
+
+```bash
+fly deploy --app geoanalytics-api --remote-only --primary-region cdg -y
+```
+
+Secrets:
+
+```bash
+fly secrets set --app geoanalytics-api KEY=value
+```
+
+Front (desde `web/`):
+
+```bash
+vercel deploy --prod --yes
+```
+
+Config relevante en el repo: `backend/Dockerfile`, `backend/fly.toml`, `backend/railway.toml` (legado, no usado).
+
+### Checklist prod
+
+- `ENV=production` (oculta `/docs`)
+- `COOKIE_SECURE=1` (HTTPS + cookie cross-domain)
+- `AUTH_JWT_SECRET` fuerte
+- `CORS_ORIGINS` = origen exacto del front (sin barra final)
+- `NEXT_PUBLIC_API_URL` = URL del API
+- Si el front pide login de Vercel: Project → Settings → Deployment Protection → off
+
 ## Lecciones útiles
 
 - `create_all` no migra tablas viejas → a veces hace falta `DROP TABLE` en local
 - Cookie entre puertos: mismo host (`localhost` ≠ `127.0.0.1`)
+- Cookie cross-domain (Vercel ↔ Fly): `SameSite=None` + `Secure`
 - `Depends(get_db)` pasa la función, no `get_db()`
 - Los model ids de Gemini cambian; si 404, prueba otro en `GEMINI_MODEL`
-- Secrets solo en `.env` / el panel del host, nunca en el README
-
-## Producción (checklist)
-
-- `ENV=production` (oculta `/docs`)
-- `COOKIE_SECURE=1` (HTTPS)
-- `AUTH_JWT_SECRET` fuerte (obligatorio)
-- `CORS_ORIGINS` = URL real del front
-- `NEXT_PUBLIC_API_URL` = URL real del API
+- Secrets solo en `.env` / Fly secrets / Vercel env, nunca en el README
 
 ## License
 
