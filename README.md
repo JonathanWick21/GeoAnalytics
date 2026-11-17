@@ -64,7 +64,7 @@ copy .env.example .env
 uvicorn main:app --reload --port 8080
 ```
 
-Variables mínimas en `.env` (ver también `.env.example`):
+Rellena `.env` (nunca lo subas al repo). Mínimo:
 
 ```env
 DATABASE_URL=postgresql+psycopg://geo:geo@127.0.0.1:5432/geoanalytics
@@ -73,7 +73,7 @@ GEMINI_API_KEY=
 GEMINI_MODEL=gemini-3.5-flash-lite
 ```
 
-Opcionales:
+Opcional / producción:
 
 ```env
 ENV=development
@@ -99,13 +99,13 @@ npm run dev
 NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
-Abrir http://localhost:3000. Conviene usar el mismo host que la API (`localhost` vs `127.0.0.1`) para que la cookie de sesión coincida.
+Abre http://localhost:3000 — usa **localhost** (no `127.0.0.1`) para que la cookie cuadre con la API.
 
 ## Demo rápida
 
-1. Registrarse / login  
-2. Crear workspace → project (nombre + URL)  
-3. Lanzar auditoría → abrir el detalle  
+1. Regístrate / login  
+2. Crea workspace → project (nombre + URL)  
+3. Lanza auditoría → abre el detalle  
 
 ## Deploy (producción)
 
@@ -115,12 +115,11 @@ Demo pública:
 |-------|------|-----|
 | Front | Vercel | https://geoanalytics-web.vercel.app |
 | API | Fly.io | https://geoanalytics-api.fly.dev |
-| DB | Neon (Postgres) | (connection string en secrets) |
+| DB | Neon (Postgres) | (solo connection string en secrets) |
 
 Health API: https://geoanalytics-api.fly.dev/health  
 Health DB: https://geoanalytics-api.fly.dev/health/db  
 
-Stack de producción: **Neon + Fly + Vercel** (Railway se descartó por trial caducado).
 
 ### Arquitectura en prod
 
@@ -173,7 +172,7 @@ Front (desde `web/`):
 vercel deploy --prod --yes
 ```
 
-Root Directory del proyecto en Vercel: `web` (el monorepo tiene el Next en esa carpeta).
+En Vercel el **Root Directory** del proyecto debe ser `web` (si no, el build falla buscando `app/` en la raíz del monorepo).
 
 Config relevante en el repo: `backend/Dockerfile`, `backend/fly.toml`, `backend/railway.toml` (legado, no usado).
 
@@ -184,16 +183,8 @@ Config relevante en el repo: `backend/Dockerfile`, `backend/fly.toml`, `backend/
 - `AUTH_JWT_SECRET` fuerte
 - `CORS_ORIGINS` = origen exacto del front (sin barra final)
 - `NEXT_PUBLIC_API_URL` = URL del API
-- Deployment Protection de Vercel desactivada si el sitio debe ser público
+- Si el front pide login de Vercel: Project → Settings → Deployment Protection → off
 
-## Lecciones útiles
-
-- `create_all` no migra tablas viejas → a veces hace falta `DROP TABLE` en local
-- Cookie entre puertos: mismo host (`localhost` ≠ `127.0.0.1`)
-- Cookie cross-domain (Vercel ↔ Fly): `SameSite=None` + `Secure`
-- `Depends(get_db)` pasa la función, no `get_db()`
-- Los model ids de Gemini cambian; si 404, probar otro en `GEMINI_MODEL`
-- Secrets en `.env` / Fly secrets / Vercel env, no en el repo
 
 ## License
 
