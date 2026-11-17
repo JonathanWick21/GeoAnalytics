@@ -30,20 +30,6 @@ FastAPI (:8080)
    └── Gemini → prompts del sector → tasa de mención
 ```
 
-## Qué hace hoy
-
-- Register / login / logout / sesión
-- Workspaces y projects (marca + URL)
-- Auditoría: crawl → genera preguntas del sector → pregunta a Gemini → detecta si menciona la marca
-- Límite diario de auditorías por usuario (`MAX_AUDITS_PER_DAY`)
-- Front: listado + detalle de auditoría
-
-## Qué no es (aún)
-
-- Multi-motor real (ChatGPT / Claude en vivo)
-- Cola en background (Celery): la auditoría corre en el request
-- Billing / planes
-
 ## Layout
 
 ```text
@@ -82,7 +68,7 @@ Rellena `.env` (nunca lo subas al repo). Mínimo:
 
 ```env
 DATABASE_URL=postgresql+psycopg://geo:geo@127.0.0.1:5432/geoanalytics
-AUTH_JWT_SECRET=cambia_esto_por_uno_largo
+AUTH_JWT_SECRET=
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-3.5-flash-lite
 ```
@@ -134,7 +120,6 @@ Demo pública:
 Health API: https://geoanalytics-api.fly.dev/health  
 Health DB: https://geoanalytics-api.fly.dev/health/db  
 
-> Railway se descartó (trial caducado). Stack real: **Neon + Fly + Vercel**.
 
 ### Arquitectura en prod
 
@@ -198,14 +183,6 @@ Config relevante en el repo: `backend/Dockerfile`, `backend/fly.toml`, `backend/
 - `NEXT_PUBLIC_API_URL` = URL del API
 - Si el front pide login de Vercel: Project → Settings → Deployment Protection → off
 
-## Lecciones útiles
-
-- `create_all` no migra tablas viejas → a veces hace falta `DROP TABLE` en local
-- Cookie entre puertos: mismo host (`localhost` ≠ `127.0.0.1`)
-- Cookie cross-domain (Vercel ↔ Fly): `SameSite=None` + `Secure`
-- `Depends(get_db)` pasa la función, no `get_db()`
-- Los model ids de Gemini cambian; si 404, prueba otro en `GEMINI_MODEL`
-- Secrets solo en `.env` / Fly secrets / Vercel env, nunca en el README
 
 ## License
 

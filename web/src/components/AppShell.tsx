@@ -7,6 +7,7 @@ import { me, logout, listWorkspaces, User, Workspace } from "@/lib/api";
 import { Icon, IconName } from "@/components/icons";
 import { Avatar, Logo, Spinner, cx } from "@/components/ui";
 
+
 type Session = {
     user: User;
     workspaces: Workspace[];
