@@ -172,6 +172,8 @@ Front (desde `web/`):
 vercel deploy --prod --yes
 ```
 
+En Vercel el **Root Directory** del proyecto debe ser `web` (si no, el build falla buscando `app/` en la raíz del monorepo).
+
 Config relevante en el repo: `backend/Dockerfile`, `backend/fly.toml`, `backend/railway.toml` (legado, no usado).
 
 ### Checklist prod

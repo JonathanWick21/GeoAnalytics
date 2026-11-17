@@ -12,7 +12,7 @@ const FEATURES: { icon: IconName; title: string; text: string }[] = [
     {
         icon: "target",
         title: "Share of voice en IA",
-        text: "Descubre en qué porcentaje de respuestas los asistentes mencionan tu marca.",
+        text: "Descubre en qué porcentaje de respuestas los asistentes mencionan tu marca. ",
     },
     {
         icon: "globe",
