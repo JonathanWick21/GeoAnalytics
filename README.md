@@ -64,8 +64,6 @@ copy .env.example .env
 uvicorn main:app --reload --port 8080
 ```
 
-Rellena `.env` (nunca lo subas al repo). Mínimo:
-
 ```env
 DATABASE_URL=postgresql+psycopg://geo:geo@127.0.0.1:5432/geoanalytics
 AUTH_JWT_SECRET=
@@ -136,7 +134,7 @@ Browser → Vercel (Next.js)
 
 ```text
 DATABASE_URL          # Neon (postgresql://…; el backend lo normaliza a +psycopg)
-AUTH_JWT_SECRET       # largo, obligatorio con ENV=production
+AUTH_JWT_SECRET       # obligatorio con ENV=production
 GEMINI_API_KEY
 GEMINI_MODEL=gemini-3.5-flash-lite
 ENV=production
@@ -174,14 +172,12 @@ vercel deploy --prod --yes
 
 En Vercel el **Root Directory** del proyecto debe ser `web` (si no, el build falla buscando `app/` en la raíz del monorepo).
 
-Config relevante en el repo: `backend/Dockerfile`, `backend/fly.toml`, `backend/railway.toml` (legado, no usado).
-
 ### Checklist prod
 
 - `ENV=production` (oculta `/docs`)
 - `COOKIE_SECURE=1` (HTTPS + cookie cross-domain)
 - `AUTH_JWT_SECRET` fuerte
-- `CORS_ORIGINS` = origen exacto del front (sin barra final)
+- `CORS_ORIGINS` = origen exacto del front
 - `NEXT_PUBLIC_API_URL` = URL del API
 - Si el front pide login de Vercel: Project → Settings → Deployment Protection → off
 
